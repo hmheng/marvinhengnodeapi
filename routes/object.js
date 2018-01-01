@@ -16,8 +16,10 @@ router.get('/:mykey', function(req, res, next) {
 		sql ="SELECT o.key, k.value, k.timestamp from `object` o JOIN `keyvalue` k ON k.objectid = o.id WHERE o.`key` = '" + req.params.mykey +"' AND k.`timestamp` <= '" + req.query.timestamp + "' ORDER BY k.timestamp desc limit 1";  
 	
 	db.query(sql, function (error, results, fields) {
-		if (error) throw error;
-		res.send(JSON.stringify(results));
+		if (error== "" || error == null)
+			res.send(JSON.stringify(results));
+		else
+			res.send(JSON.stringify(""));
 	});
 });
 
@@ -26,47 +28,59 @@ router.get('/:mykey', function(req, res, next) {
 router.post('/', function(req, res, next) {
 	var now = Date.now();
 	db.query("SELECT id from `object` WHERE `key` = '" +  req.body.key + "' limit 1", function (error, results, fields) {
-		if (error) throw error;
-		var id;
-		if(results.length == 0){
-			var newid = uuid.v4(); 
-			id = newid.toString();
-			db.query("INSERT INTO `object` VALUES ('"+ id + "','" + req.body.key + "','" + now +"')", function (error, results, fields) {
-				if (error) throw error;
-				
+		if (error== "" || error == null){
+			var id;
+			if(results.length == 0){
+				var newid = uuid.v4(); 
+				id = newid.toString();
+				db.query("INSERT INTO `object` VALUES ('"+ id + "','" + req.body.key + "','" + now +"')", function (error, results, fields) {
+					if (error== "" || error == null){
+						if(id != 'undefined' && id != null)
+						{
+							var newid = uuid.v4(); 
+							db.query("INSERT INTO `keyvalue`(`id`, `value`, `timestamp`, `objectid`) VALUES ('" + newid + "','" + req.body.value + "','" + now + "'," + "(SELECT id FROM `object` WHERE `key` = '" + req.body.key + "')" + ")", function (error, results, fields) {
+								if (error== "" || error == null){
+									db.query("SELECT o.key, k.value, k.timestamp from `object` o JOIN `keyvalue` k ON k.objectid = o.id  WHERE o.`id` = '" + id +"' ORDER BY k.timestamp desc limit 1", function (error, results, fields) {
+										if (error== "" || error == null)
+											res.send(JSON.stringify(results));
+									});
+								}else{
+									res.send(JSON.stringify(""));
+								}
+							});				
+						}else{
+							res.send(JSON.stringify(""));
+						}
+					}else{
+						res.send(JSON.stringify(""));
+					}
+				});
+			}
+			else {
+				id = results[0].id;
 				if(id != 'undefined' && id != null)
 				{
 					var newid = uuid.v4(); 
-					db.query("INSERT INTO `keyvalue`(`id`, `value`, `timestamp`, `objectid`) VALUES ('" + newid + "','" + req.body.value + "','" + now + "'," + "(SELECT id FROM `object` WHERE `key` = '" + req.body.key + "')" + ")", function (error, results, fields) {
-						if (error) throw error;
-						db.query("SELECT o.key, k.value, k.timestamp from `object` o JOIN `keyvalue` k ON k.objectid = o.id  WHERE o.`id` = '" + id +"' ORDER BY k.timestamp desc limit 1", function (error, results, fields) {
-							if (error) throw error;
-							res.send(JSON.stringify(results));
-						});
+				
+					db.query("INSERT INTO `keyvalue`(`id`, `value`, `timestamp`, `objectid`) VALUES ('" + newid + "','" + req.body.value + "','" + now + "','" + id + "')", function (error, results, fields) {
+						if (error== "" || error == null){
+							db.query("SELECT o.key, k.value, k.timestamp from `object` o JOIN `keyvalue` k ON k.objectid = o.id  WHERE o.`id` = '" + id +"' ORDER BY k.timestamp desc limit 1", function (error, results, fields) {
+								if (error== "" || error == null)
+									res.send(JSON.stringify(results));
+								else
+									res.send(JSON.stringify(""));
+							});
+						}else{
+							res.send(JSON.stringify(""));
+						}
 					});				
 				}else{
 					res.send(JSON.stringify(""));
 				}
-			});
-		}
-		else {
-			id = results[0].id;
-			if(id != 'undefined' && id != null)
-			{
-				var newid = uuid.v4(); 
-			
-				db.query("INSERT INTO `keyvalue`(`id`, `value`, `timestamp`, `objectid`) VALUES ('" + newid + "','" + req.body.value + "','" + now + "','" + id + "')", function (error, results, fields) {
-					if (error) throw error;
-					db.query("SELECT o.key, k.value, k.timestamp from `object` o JOIN `keyvalue` k ON k.objectid = o.id  WHERE o.`id` = '" + id +"' ORDER BY k.timestamp desc limit 1", function (error, results, fields) {
-						if (error) throw error;
-						res.send(JSON.stringify(results));
-					});
-				});				
-			}else{
-				res.send(JSON.stringify(""));
 			}
+		} else{
+			res.send(JSON.stringify(""));
 		}
-		
 	});
 });
 
